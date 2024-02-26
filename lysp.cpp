@@ -1,0 +1,153 @@
+#include <iostream>
+#include <string>
+using namespace std;
+
+struct TreeNode;
+struct ListNode;
+
+struct ListNode {
+    ListNode *next;
+    TreeNode *data;
+};
+
+struct TreeNode {
+    ListNode *children;
+    char type; // 'v' var, 'f' float, 's' string, etc.
+    string value;
+};
+
+TreeNode *tree_new() {
+    TreeNode *head = new TreeNode;
+    head->children = NULL;
+    return head;
+}
+
+ListNode *list_new(TreeNode *data) {
+    ListNode *head = new ListNode;
+    head->data = data;
+    head->next = NULL;
+    return head;
+}
+
+void list_insert_front(ListNode **head, TreeNode *data) {
+    if(*head == NULL) {
+        *head = list_new(data);
+    } else {
+        ListNode *ln = list_new(data);
+        ln->next = *head;
+        *head = ln;
+    }
+}
+
+void list_insert_end(ListNode **head, TreeNode *data) {
+    if(*head == NULL) {
+        *head = list_new(data);
+    } else {
+        ListNode *cur = *head;
+        while(cur->next != NULL) {
+            cur = cur->next;
+        }
+        ListNode *ln = list_new(data);
+        cur->next = ln;
+    }
+}
+
+int parse_string(string s, int start_pos, TreeNode **head) {
+    for(int i = start_pos; i < s.length(); i++) {
+        // consume spaces
+        while(i < s.length() && s[i] == ' ') {
+            i++;
+        }
+        //cout << "i = " << i << " s[i] = " << s[i] << endl;
+        if(s[i] == '(') {
+            if(*head == NULL) { // first call
+                *head = tree_new();
+                i = parse_string(s, i+1, head);
+            } else { // add child otherwise
+                TreeNode *new_child = tree_new();
+                list_insert_end(&((*head)->children), new_child);
+                i = parse_string(s, i+1, &new_child);
+            }
+        } else if(s[i] == ')') {
+            return i;
+        } else if(s[i] == '"') {
+            string str = "";
+            i++;
+            while(i < s.length() && s[i] != '"') {
+                str += s[i];
+                i++;
+            }
+            cout << "STR = " << str << endl;
+            TreeNode *new_child = tree_new();
+            new_child->value = str;
+            new_child->type = 's';
+            list_insert_end(&((*head)->children), new_child);
+        } else {
+            string symbol = "";
+            while(i < s.length() && s[i] != ' ' && s[i] != ')' && s[i] != '(') {
+                symbol += s[i];
+                i++;
+            }
+            i--;
+            TreeNode *new_child = tree_new();
+            new_child->value = symbol;
+            if(symbol[0] >= '0' && symbol[0] <= '9') {
+                new_child->type = 'f';
+            } else {
+                new_child->type = 'v';
+            }
+            list_insert_end(&((*head)->children), new_child);
+        }
+    }
+    return s.length();
+}
+
+void print_tree(TreeNode *head, int indent) {
+    if(head == NULL) {
+        return;
+    }
+    ListNode *child = head->children;
+    while(child != NULL) {
+        for(int i = 0; i <= indent; i++) {
+            cout << "-";
+        }
+        cout << child->data->value << " " << child->data->type << endl;
+        print_tree(child->data, indent+1);
+        child = child->next;
+    }
+}
+
+void print_tree_sexpr(TreeNode *head) {
+    if(head == NULL) {
+        return;
+    }
+    if(head->children != NULL) { cout << "("; }
+    ListNode *child = head->children;
+    while(child != NULL) {
+        if(child->data->type == 's') { cout << "\""; }
+        cout << child->data->value;
+        if(child->data->type == 's') { cout << "\""; }
+        print_tree_sexpr(child->data);
+        if(child->next != NULL) { cout << " "; }
+        child = child->next;
+    }
+    if(head->children != NULL) { cout << ")"; }
+}
+
+int main() {
+    string alltext;
+    string line;
+    while(getline(cin, line)) {
+        alltext += line;
+    }
+    TreeNode *head = NULL;
+    parse_string(alltext, 0, &head);
+    cout << (long)head << endl;
+    print_tree(head, 0);
+    print_tree_sexpr(head);
+    cout << endl;
+
+    return 0;
+}
+    
+
