@@ -90,13 +90,18 @@ int parse_string(string s, int start_pos, TreeNode **head) {
             }
             i--;
             TreeNode *new_child = tree_new();
+            new_child->children = NULL;
             new_child->value = symbol;
             if(symbol[0] >= '0' && symbol[0] <= '9') {
                 new_child->type = 'f';
             } else {
                 new_child->type = 'v';
             }
-            list_insert_end(&((*head)->children), new_child);
+            if(*head == NULL) { // first call
+                *head = new_child;
+            } else {
+                list_insert_end(&((*head)->children), new_child);
+            }
         }
     }
     return s.length();
@@ -121,17 +126,47 @@ void print_tree_sexpr(TreeNode *head) {
     if(head == NULL) {
         return;
     }
-    if(head->children != NULL) { cout << "("; }
-    ListNode *child = head->children;
-    while(child != NULL) {
-        if(child->data->type == 's') { cout << "\""; }
-        cout << child->data->value;
-        if(child->data->type == 's') { cout << "\""; }
-        print_tree_sexpr(child->data);
-        if(child->next != NULL) { cout << " "; }
-        child = child->next;
+    if(head->children == NULL) {
+        if(head->type == 's') { cout << "\""; }
+        cout << head->value;
+        if(head->type == 's') { cout << "\""; }
+    } else {
+        cout << "(";
+        ListNode *child = head->children;
+        while(child != NULL) {
+            print_tree_sexpr(child->data);
+            if(child->next != NULL) { cout << " "; }
+            child = child->next;
+        }
+        cout << ")";
     }
-    if(head->children != NULL) { cout << ")"; }
+}
+
+TreeNode *eval_tree(TreeNode *head) {
+    if(head->children == NULL) {
+        return head;
+    } else {
+        ListNode *child = head->children;
+        TreeNode *op_tn = eval_tree(child->data);
+        child = child->next;
+        TreeNode *child_tn = eval_tree(child->data);
+        float result_val = stof(child_tn->value);
+        child = child->next;
+        while(child != NULL) {
+            child_tn = eval_tree(child->data);
+            if(op_tn->value == "+") {
+                result_val += stof(child_tn->value);
+            } else if(op_tn->value == "-") {
+                result_val -= stof(child_tn->value);
+            }
+            child = child->next;
+        }
+        TreeNode *result_tn = new TreeNode;
+        result_tn->value = to_string(result_val);
+        result_tn->children = NULL;
+        result_tn->type = 'f';
+        return result_tn;
+    }
 }
 
 int main() {
@@ -140,11 +175,16 @@ int main() {
     while(getline(cin, line)) {
         alltext += line;
     }
+    cout << "Input: " << alltext << endl;
     TreeNode *head = NULL;
     parse_string(alltext, 0, &head);
     cout << (long)head << endl;
     print_tree(head, 0);
     print_tree_sexpr(head);
+    cout << endl;
+    cout << "Result: ";
+    print_tree(eval_tree(head), 0);
+    print_tree_sexpr(eval_tree(head));
     cout << endl;
 
     return 0;
