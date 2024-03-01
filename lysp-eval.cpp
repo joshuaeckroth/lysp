@@ -149,23 +149,36 @@ TreeNode *eval_tree(TreeNode *head) {
         ListNode *child = head->children;
         TreeNode *op_tn = eval_tree(child->data);
         child = child->next;
-        TreeNode *child_tn = eval_tree(child->data);
-        float result_val = stof(child_tn->value);
-        child = child->next;
-        while(child != NULL) {
-            child_tn = eval_tree(child->data);
-            if(op_tn->value == "+") {
-                result_val += stof(child_tn->value);
-            } else if(op_tn->value == "-") {
-                result_val -= stof(child_tn->value);
-            }
+        if(op_tn->value == "if") {
+            TreeNode *child_question = eval_tree(child->data);
             child = child->next;
+            TreeNode *child_yes = eval_tree(child->data);
+            child = child->next;
+            TreeNode *child_no = eval_tree(child->data);
+            if(stof(child_question->value) < 0.0) { // negative means false
+                return child_no;
+            } else {
+                return child_yes;
+            }
+        } else {
+            TreeNode *child_tn = eval_tree(child->data);
+            float result_val = stof(child_tn->value);
+            child = child->next;
+            while(child != NULL) {
+                child_tn = eval_tree(child->data);
+                if(op_tn->value == "+") {
+                    result_val += stof(child_tn->value);
+                } else if(op_tn->value == "-") {
+                    result_val -= stof(child_tn->value);
+                }
+                child = child->next;
+            }
+            TreeNode *result_tn = new TreeNode;
+            result_tn->value = to_string(result_val);
+            result_tn->children = NULL;
+            result_tn->type = 'f';
+            return result_tn;
         }
-        TreeNode *result_tn = new TreeNode;
-        result_tn->value = to_string(result_val);
-        result_tn->children = NULL;
-        result_tn->type = 'f';
-        return result_tn;
     }
 }
 
