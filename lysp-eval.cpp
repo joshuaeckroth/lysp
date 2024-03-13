@@ -1,5 +1,7 @@
 #include <iostream>
 #include <string>
+#include <map>
+#include <fstream>
 using namespace std;
 
 struct TreeNode;
@@ -128,7 +130,7 @@ void print_tree_sexpr(TreeNode *head) {
     }
     if(head->children == NULL) {
         if(head->type == 's') { cout << "\""; }
-        cout << head->value;
+        cout << head->value << "[" << head->type << "]";
         if(head->type == 's') { cout << "\""; }
     } else {
         cout << "(";
@@ -142,30 +144,56 @@ void print_tree_sexpr(TreeNode *head) {
     }
 }
 
-TreeNode *eval_tree(TreeNode *head) {
+TreeNode *eval_tree(TreeNode *head, map<string, string> env) {
     if(head->children == NULL) {
+        if(head->type == 'v') {
+            // look in env for that variable's value
+            if(env.find(head->value) != env.end()) {
+                head->value = env[head->value];
+            }
+        }
         return head;
     } else {
         ListNode *child = head->children;
-        TreeNode *op_tn = eval_tree(child->data);
+        TreeNode *op_tn = eval_tree(child->data, env);
         child = child->next;
         if(op_tn->value == "if") {
-            TreeNode *child_question = eval_tree(child->data);
+            TreeNode *child_question = eval_tree(child->data, env);
             child = child->next;
-            TreeNode *child_yes = eval_tree(child->data);
+            TreeNode *child_yes = eval_tree(child->data, env);
             child = child->next;
-            TreeNode *child_no = eval_tree(child->data);
+            TreeNode *child_no = eval_tree(child->data, env);
             if(stof(child_question->value) < 0.0) { // negative means false
                 return child_no;
             } else {
                 return child_yes;
             }
+        } else if(op_tn->value == "let") {
+            TreeNode *var_value_tn = child->data;
+            ListNode *var_value_child = var_value_tn->children;
+            TreeNode *var_tn = var_value_child->data;
+            var_value_child = var_value_child->next;
+            TreeNode *value_tn = var_value_child->data;
+            string var = var_tn->value;
+            string value = value_tn->value;
+            env[var] = value;
+            child = child->next;
+            return eval_tree(child->data, env);
+        } else if(op_tn->value == "input") {
+            // get user input
+            string input;
+            cout << "Input (numeric): ";
+            getline(cin, input);
+            TreeNode *value_tn = tree_new();
+            value_tn->value = input;
+            value_tn->type = 'f';
+            return value_tn;
         } else {
-            TreeNode *child_tn = eval_tree(child->data);
+            TreeNode *child_tn = eval_tree(child->data, env);
             float result_val = stof(child_tn->value);
             child = child->next;
             while(child != NULL) {
-                child_tn = eval_tree(child->data);
+                child_tn = eval_tree(child->data, env);
                 if(op_tn->value == "+") {
                     result_val += stof(child_tn->value);
                 } else if(op_tn->value == "-") {
@@ -182,10 +210,11 @@ TreeNode *eval_tree(TreeNode *head) {
     }
 }
 
-int main() {
+int main(int argc, const char**argv) {
+    ifstream f(argv[1]);
     string alltext;
     string line;
-    while(getline(cin, line)) {
+    while(getline(f, line)) {
         alltext += line;
     }
     cout << "Input: " << alltext << endl;
@@ -196,8 +225,10 @@ int main() {
     print_tree_sexpr(head);
     cout << endl;
     cout << "Result: ";
-    print_tree(eval_tree(head), 0);
-    print_tree_sexpr(eval_tree(head));
+    map<string, string> env;
+    TreeNode *result = eval_tree(head, env);
+    print_tree(result, 0);
+    print_tree_sexpr(result);
     cout << endl;
 
     return 0;
